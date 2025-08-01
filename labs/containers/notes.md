@@ -68,6 +68,17 @@ sudo ctr images ls
 
 You will see both `example.com/iximiuz/test:latest` and `registry.iximiuz.com/test:latest` in the output, pointing to the same image digest.
 
+### Where are image labels stored?
+
+When you export an image, the labels are not in a single, obvious file. They are stored within the image's configuration file, which is a JSON file located in the `blobs/sha256/` directory of the exported tarball.
+
+However, the easiest way to read an image's labels is to use the `ctr image inspect` command, which provides a full JSON output of the image's metadata.
+
+```bash
+ctr image inspect <image_name> | jq '.Spec.Config.Labels'
+```
+This is more direct than exporting and searching through the tar file.
+
 ### Troubleshooting Killed Pods
 
 When a pod is killed, it's often due to resource constraints or errors. Here are some commands to help you investigate.
