@@ -139,4 +139,4 @@ Here is how to copy the `ghcr.io/iximiuz/labs/nginx:latest` image to `registry.i
 
 This single command handles the entire process, including authentication with the destination registry (using the credentials you provided in the login step).
 
-```
+
