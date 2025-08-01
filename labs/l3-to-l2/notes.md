@@ -1,3 +1,7 @@
+This document details the `iproute2` commands used to create both a simple L2 bridge and a more complex VLAN-aware bridge. The `ip` and `bridge` commands are core components of the `iproute2` suite. For convenience, these commands are wrapped in the Bash functions below.
+
+---
+
 #### Bash functions (Simple L2 Bridge)
 
 create_bridge_simple() {
