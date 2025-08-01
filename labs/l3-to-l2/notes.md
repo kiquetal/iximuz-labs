@@ -226,3 +226,43 @@ This diagram shows what happens to a single Ethernet frame as it travels from a 
 5.  **Internal Bridge Logic:** Now that the frame is tagged, the bridge knows it belongs to VLAN 100. It looks up its forwarding database and sends the frame out only to other ports that are also members of VLAN 100.
 
 This is why the `pvid` setting is so critical for connecting VLAN-unaware devices to a VLAN-aware network. It automatically handles the VLAN tagging for them at the edge of the network (the bridge port).
+
+### Scenario: Communication Between Two Hosts in the Same VLAN
+
+Let's expand on the previous example to see how two hosts, `host10` and `host11`, communicate when they are in the same VLAN (e.g., VLAN 100).
+
+```ascii
++---------------------------+                                +------------------------------------+---------------------------+
+|   Host Namespace (host10) |                                |  Bridge Namespace (br-namespace)   |   Host Namespace (host11) |
+|                           |                                |                                    |                           |
+|      eth0: 10.1.1.10      |                                |      VLAN-Aware Bridge (br1)       |      eth0: 10.1.1.11      |
+|           |               |       Untagged Frame           |                                    |           ^               |
+|           v               | -----------------------------> | +---------------------+----------+ |           |               |
+| (1) Send Ping             |                                | | Port: veth-host10   |          | |           |               |
++---------------------------+                                | | PVID=100            |          | |           |               |
+                                                             | | (2) Tag Added (VID=100)          | |           |               |
+                                                             | +---------------------+----------+ |           |               |
+                                                             |           |                        | |           |               |
+                                                             |           v (3) Forwarding         | |           |               |
+                                                             |                                    | |           |               |
+                                                             | +---------------------+----------+ |       Untagged Frame      |
+                                                             | | Port: veth-host11   |          | | <------------------------ |
+                                                             | | PVID=100            |          | | (5) Receive Ping          |
+                                                             | | (4) Tag Stripped    |          | +---------------------------+
+                                                             | +---------------------+----------+
+                                                             +------------------------------------+
+```
+
+**Explanation of the Traffic Flow:**
+
+1.  **`host10` Sends a Packet:** `host10` wants to ping `host11`. It creates a standard, untagged Ethernet frame with the destination MAC address of `host11`.
+
+2.  **Frame Arrives at Bridge and is Tagged:** The untagged frame travels from `host10` to the bridge, arriving at the `veth-host10` port. Because this port is configured with `pvid 100`, the bridge adds a VLAN tag with ID `100` to the frame.
+
+3.  **Bridge Forwards the Frame:** The bridge now sees a frame tagged for VLAN 100, destined for `host11`'s MAC address. It looks up its forwarding database and knows that this MAC address is reachable via the `veth-host11` port. Since `veth-host11` is also a member of VLAN 100, the bridge forwards the frame to that port.
+
+4.  **Frame is Untagged on Egress:** The `veth-host11` port is also an access port. As the frame is sent out of this port towards `host11`, the bridge **strips the VLAN 100 tag**.
+
+5.  **`host11` Receives the Packet:** `host11` receives a standard, untagged Ethernet frame, exactly as if it were on a simple, non-VLAN network with `host10`.
+
+This entire process of tagging and untagging is completely transparent to the end hosts. They communicate as normal, while the VLAN-aware bridge enforces the network segmentation, ensuring the frame is only delivered to other members of the same VLAN.
