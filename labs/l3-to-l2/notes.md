@@ -1,6 +1,6 @@
-#### Bash functions
+#### Bash functions (Simple L2 Bridge)
 
-create_bridge() {
+create_bridge_simple() {
 
   local nsname="$1"
   local ifname="$2"
@@ -13,64 +13,7 @@ create_bridge() {
   ip netns exec ${nsname} ip link set ${ifname} up
 }
 
-# The `create_bridge` function automates the creation of a network namespace 
-# and a bridge interface within it. This setup is fundamental for creating isolated 
-# network environments, where the bridge can connect multiple virtual interfaces.
-
-# ASCII Diagram: Visualizing `create_bridge "ns-test" "br-test"`
-
-# 1. Initial State:
-# The system starts with the default network namespace, which contains the physical
-# interfaces like `eth0`.
-
-#    +----------------------------------------+
-#    |         Default Network Namespace      |
-#    |                                        |
-#    |   +--------+      +--------+           |
-#    |   |  eth0  |      |   lo   |           |
-#    |   +--------+      +--------+           |
-#    |                                        |
-#    +----------------------------------------+
-
-# 2. `ip netns add ns-test`:
-# A new, isolated network namespace named "ns-test" is created. It starts with
-# its own loopback interface `lo`, which is initially down.
-
-#    +----------------------------------------+
-#    |         Default Network Namespace      |
-#    +----------------------------------------+
-#
-#    +----------------------------------------+
-#    |          Network Namespace (ns-test)   |
-#    |                                        |
-#    |   +--------+                           |
-#    |   |   lo   | (DOWN)                    |
-#    |   +--------+                           |
-#    |                                        |
-#    +----------------------------------------+
-
-# 3. `ip link add br-test type bridge` & `ip link set ... up`:
-# Inside "ns-test", a bridge interface "br-test" is created, and both `lo` and
-# `br-test` are brought up. The namespace is now ready to connect other interfaces.
-
-#    +----------------------------------------+
-#    |         Default Network Namespace      |
-#    +----------------------------------------+
-#
-#    +------------------------------------------------+
-#    |            Network Namespace (ns-test)         |
-#    |                                                |
-#    |   +------------------+      +--------+         |
-#    |   |  Bridge (br-test) |      |   lo   | (UP)    |
-#    |   |       (UP)       |      +--------+         |
-#    |   +------------------+                         |
-#    |           ^                                    |
-#    |           |                                    |
-#    |   (Ready to connect veth pairs)                |
-#    |                                                |
-#    +------------------------------------------------+
-
-create_end_host() {
+create_end_host_simple() {
   local host_nsname="$1"
   local peer1_ifname="$2"
   local peer2_ifname="$2b"
@@ -97,85 +40,12 @@ create_end_host() {
   ip netns exec ${bridge_nsname} ip link set ${peer2_ifname} master ${bridge_ifname}
 }
 
-# The `create_end_host` function sets up a new network namespace, representing an
-# end host, and connects it to an existing bridge in another namespace. This is
-# achieved by creating a virtual Ethernet (veth) pair, which acts as a virtual
-# patch cable between the two namespaces.
-
-# ASCII Diagram: Visualizing `create_end_host "ns-h1" "veth-h1" "10.10.0.1/24" "ns-br" "br0"`
-
-# 1. Initial State:
-# We start with a namespace "ns-br" containing a bridge "br0". The default
-# namespace is also present.
-
-#    +----------------------------------------+
-#    |         Default Network Namespace      |
-#    +----------------------------------------+
-#
-#    +------------------------------------------------+
-#    |            Network Namespace (ns-br)           |
-#    |                                                |
-#    |   +------------------+      +--------+         |
-#    |   |   Bridge (br0)   |      |   lo   | (UP)    |
-#    |   |       (UP)       |      +--------+         |
-#    |   +------------------+                         |
-#    |                                                |
-#    +------------------------------------------------+
-
-# 2. `ip netns add ns-h1`:
-# A new namespace "ns-h1" is created for the end host.
-
-#    +----------------------------------------+
-#    |         Default Network Namespace      |
-#    +----------------------------------------+
-#
-#    +----------------------------------------+     +----------------------------------------+
-#    |          Network Namespace (ns-br)   |     |          Network Namespace (ns-h1)   |
-#    |                                        |     |                                        |
-#    |   +------------------+                 |     |   +--------+                           |
-#    |   |   Bridge (br0)   |                 |     |   |   lo   | (UP)                      |
-#    |   +------------------+                 |     |   +--------+                           |
-#    +----------------------------------------+     +----------------------------------------+
-
-# 3. `ip link add veth-h1 ... peer veth-h1b ...`:
-# A veth pair is created. "veth-h1" is placed in "ns-h1" and "veth-h1b" in "ns-br".
-
-#    +----------------------------------------+
-#    |         Default Network Namespace      |
-#    +----------------------------------------+
-#
-#    +----------------------------------------+     +-------------------------------------------+
-#    |          Network Namespace (ns-br)   |     |          Network Namespace (ns-h1)      |
-#    |                                        |     |                                           |
-#    |   +------------------+  +-----------+  |     |   +-----------+      +--------+         |
-#    |   |   Bridge (br0)   |  | veth-h1b  |  |     |   |  veth-h1  |      |   lo   | (UP)    |
-#    |   +------------------+  +-----------+  |     |   +-----------+      +--------+         |
-#    |                           |            |     |        |                                |
-#    |                           +------------+-----+--------+                                |
-#    |                                        |     |                                           |
-#    +----------------------------------------+     +-------------------------------------------+
-
-# 4. `ip link set ... master br0` & `ip addr add ...`:
-# "veth-h1b" is attached to the bridge "br0". "veth-h1" gets an IP address.
-
-#    +-------------------------------------------+     +------------------------------------------------------+
-#    |           Network Namespace (ns-br)       |     |              Network Namespace (ns-h1)             |
-#    |                                           |     |                                                      |
-#    |   +------------------+                    |     |   +-------------------------+      +--------+        |
-#    |   |  Bridge (br0)    | <--- attached ---- | ----+---| veth-h1 (10.10.0.1/24)  |      |   lo   | (UP)   |
-#    |   | +-------------+  |                    |     |   +-------------------------+      +--------+        |
-#    |   | |  veth-h1b   |  |                    |     |                                                      |
-#    |   | +-------------+  |                    |     |                                                      |
-#    |   +------------------+                    |     |                                                      |
-#    +-------------------------------------------+     +------------------------------------------------------+
 
 ---
 
-### L2 Network Diagram
+### L2 Network Diagram (Single Bridge)
 
-This diagram illustrates the creation of a simple Layer 2 network. A single bridge, `br`, is created within its own namespace, `br2`. Three hosts (`host10`, `host11`, `host12`), each in their own namespace, are then connected to this bridge.
-
-Because all hosts are connected to the same bridge and assigned IP addresses in the same subnet (`192.168.0.0/24`), they can all communicate directly with each other. This setup is a foundational example of a flat Layer 2 network topology.
+This diagram illustrates a simple Layer 2 network. A single bridge, `br`, is created. Three hosts (`host10`, `host11`, `host12`), each in their own namespace, are then connected to this bridge. Because all hosts are connected to the same bridge and assigned IP addresses in the same subnet (`192.168.0.0/24`), they can all communicate directly with each other.
 
 ```ascii
                     +---------------------------------+
@@ -196,3 +66,163 @@ Because all hosts are connected to the same bridge and assigned IP addresses in 
   +-------------------------+  +-------------------------+  +-------------------------+
 ```
 
+---
+
+### L2 Network with VLANs
+
+Here are the specific functions used to create a VLAN-aware bridge and connect hosts to it on specific VLANs.
+
+#### Bash functions (VLAN-Aware L2 Bridge)
+
+create_bridge_vlan() {
+  local nsname="$1"
+  local ifname="$2"
+
+  echo "Creating bridge ${nsname}/${ifname}"
+
+  ip netns add ${nsname}
+  ip netns exec ${nsname} ip link set lo up
+  ip netns exec ${nsname} ip link add ${ifname} type bridge
+  ip netns exec ${nsname} ip link set ${ifname} up
+
+  # Enable VLAN filtering on bridge.
+  ip netns exec ${nsname} ip link set ${ifname} type bridge vlan_filtering 1
+}
+
+create_end_host_vlan() {
+  local host_nsname="$1"
+  local peer1_ifname="$2"
+  local peer2_ifname="$2b"
+  local vlan_vid="$3"
+  local bridge_nsname="$4"
+  local bridge_ifname="$5"
+
+  echo "Creating end host ${host_nsname} connected to ${bridge_nsname}/${bridge_ifname} bridge (VLAN ${vlan_vid})"
+
+  # Create end host network namespace.
+  ip netns add ${host_nsname}
+  ip netns exec ${host_nsname} ip link set lo up
+
+  # Create a veth pair connecting end host and bridge namespaces.
+  ip link add ${peer1_ifname} netns ${host_nsname} type veth peer \
+              ${peer2_ifname} netns ${bridge_nsname}
+  ip netns exec ${host_nsname} ip link set ${peer1_ifname} up
+  ip netns exec ${bridge_nsname} ip link set ${peer2_ifname} up
+
+  # Attach peer2 interface to the bridge.
+  ip netns exec ${bridge_nsname} ip link set ${peer2_ifname} master ${bridge_ifname}
+
+  # Put host into right VLAN
+  ip netns exec ${bridge_nsname} bridge vlan del dev ${peer2_ifname} vid 1
+  ip netns exec ${bridge_nsname} bridge vlan add dev ${peer2_ifname} vid ${vlan_vid} pvid ${vlan_vid}
+}
+
+This setup demonstrates how a single Linux bridge can be used to create multiple isolated Layer 2 networks. The `vlan_filtering 1` command turns the bridge into a VLAN-aware switch. The `create_end_host_vlan` function then assigns each host's connection to a specific VLAN using the `bridge vlan add` command. The `pvid` (Port VLAN ID) setting is key, as it tags all untagged traffic from the host with the correct VLAN ID, allowing the hosts to be unaware of the VLAN configuration.
+
+This creates two separate broadcast domains on the same bridge. Hosts in VLAN 10 can only communicate with other hosts in VLAN 10, and hosts in VLAN 20 can only communicate with other hosts in VLAN 20.
+
+#### Diagram: L2 Network with VLANs
+
+```ascii
+                    +---------------------------------------------------+
+                    |              Bridge Namespace (bridge1)           |
+                    |                                                   |
+                    | +---------------------------------------------+   |
+                    | |         VLAN-Aware Bridge: br1              |   |
+                    | |                                             |   |
+                    | |  +-----------+      +-----------+           |   |
+                    | |  | VLAN 10   |      | VLAN 20   |           |   |
+                    | |  +-----------+      +-----------+           |   |
+                    | |      | | |              | | |               |   |
+                    | +------|-|-|--------------|-|-|---------------+
+                    +--------|-|-|--------------|-|-|-------------------+
+                             | | |              | | |
+         (veth) -------------+ | +------------  | | |
+         (veth) --------------+--------------  | | |
+         (veth) -----------------------------  | | |
+                                               | | |
+         (veth) -------------------------------+\ | +-------------
+         (veth) ---------------------------------+---------------
+         (veth) -------------------------------------------------
+
+  +-------------------------+  +-------------------------+  +-------------------------+
+  |      Host (host10)      |  |      Host (host11)      |  |      Host (host12)      |
+  |                         |  |                         |  |                         |
+  | eth10: 192.168.10.10/24 |  | eth11: 192.168.10.11/24 |  | eth12: 192.168.10.12/24 |
+  +-------------------------+  +-------------------------+  +-------------------------+
+
+  +-------------------------+  +-------------------------+  +-------------------------+
+  |      Host (host20)      |  |      Host (host21)      |  |      Host (host22)      |
+  |                         |  |                         |  |                         |
+  | eth20: 192.168.20.20/24 |  | eth21: 192.168.20.21/24 |  | eth22: 192.168.20.22/24 |
+  +-------------------------+  +-------------------------+  +-------------------------+
+```
+*(Note: The IP addresses are assumed based on a common convention where the third octet matches the VLAN ID.)*
+
+### Command Deep Dive: `bridge vlan add`
+
+Let's break down this command with an example. Assume we have the following:
+- A bridge in a namespace called `br-namespace`
+- A veth interface `veth-host10` that connects a host to the bridge.
+- We want to assign this host to VLAN `100`.
+
+The command would be:
+```bash
+ip netns exec br-namespace bridge vlan add dev veth-host10 vid 100 pvid 100
+```
+
+Here is what each part does:
+
+1.  **`ip netns exec br-namespace`**: This tells the system to run the following command *inside* the network namespace named `br-namespace`. This is where our bridge device lives.
+
+2.  **`bridge vlan add`**: This is the command to add a VLAN configuration to a port on a bridge.
+
+3.  **`dev veth-host10`**: This specifies the network interface (`dev`) that we are configuring. In this case, it's the `veth-host10` interface, which acts as the bridge port for our host.
+
+4.  **`vid 100`**: This sets the VLAN ID (`vid`). It configures the port to accept traffic that is tagged with VLAN ID `100`.
+
+5.  **`pvid 100`**: This sets the Port VLAN ID (`pvid`). This is the crucial part for making the host "unaware" of the VLAN. Any traffic that arrives on the `veth-host10` port *without* a VLAN tag will be automatically tagged with VLAN ID `100`.
+
+In short, this single command configures the `veth-host10` port on the bridge to be an **access port** for VLAN `100`. It ensures that all traffic from the connected host is correctly placed into VLAN 100, whether the host itself is tagging packets or not (it usually isn't).
+
+#### Diagram: VLAN Access Port in Action
+
+This diagram shows what happens to a single Ethernet frame as it travels from a host, across the `veth` pair, and into the VLAN-aware bridge.
+
+```ascii
++---------------------------+                                +------------------------------------+
+|   Host Namespace (host10) |                                |  Bridge Namespace (br-namespace)   |
+|                           |                                |                                    |
+| +-----------------------+ |                                | +--------------------------------+ |
+| | Application           | |                                | |      VLAN-Aware Bridge (br1)   | |
+| +-----------------------+ |                                | |                                | |
+|           |               |                                | |              +---------------+ | |
+|           v               |                                | |              | VLAN 100 DB   | | |
+| +-----------------------+ |       Untagged Ethernet Frame  | |              +---------------+ | |
+| |      eth0             | |      (No VLAN Header)          | |                     ^            | |
+| +-----------------------+ |                                | |                     |            | |
+|           |               | -----------------------------> | +---------------------+----------+ | |
++-----------|---------------+
+| | Port: veth-host10   |          | |
+            |                                                | | PVID=100            |          | |
+            +------------------ veth pair -------------------+ | Tagging Happens Here! |          | |
+                                                             | +---------------------+----------+ |
+                                                             |           |                        | |
+                                                             |           v                        | |
+                                                             |   Forwarded to other VLAN 100 ports  |
+                                                             +------------------------------------+
+```
+
+**Explanation of the Diagram:**
+
+1.  **Host Sends Traffic:** An application inside the `host10` namespace sends data. The host's network stack creates a standard Ethernet frame. Since the host is not configured to be VLAN-aware, this frame has no VLAN tag.
+
+2.  **Travels Over `veth`:** The untagged frame is sent out of the host's `eth0` interface and travels across the `veth` pair to the bridge namespace.
+
+3.  **Arrives at the Bridge Port:** The frame arrives at the `veth-host10` interface, which is a port on the `br1` bridge.
+
+4.  **The `PVID` Rule is Applied:** The bridge sees an untagged frame arrive on a port that has a `PVID` of `100`. The bridge immediately **adds a VLAN tag with ID 100** to the frame.
+
+5.  **Internal Bridge Logic:** Now that the frame is tagged, the bridge knows it belongs to VLAN 100. It looks up its forwarding database and sends the frame out only to other ports that are also members of VLAN 100.
+
+This is why the `pvid` setting is so critical for connecting VLAN-unaware devices to a VLAN-aware network. It automatically handles the VLAN tagging for them at the edge of the network (the bridge port).
