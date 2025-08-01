@@ -56,4 +56,46 @@ sudo ctr images ls
 
 You will see both `example.com/iximiuz/test:latest` and `registry.iximiuz.com/test:latest` in the output, pointing to the same image digest.
 
- 
+### Troubleshooting Killed Pods
+
+When a pod is killed, it's often due to resource constraints or errors. Here are some commands to help you investigate.
+
+#### Check kubelet logs
+
+The `kubelet` is the primary "node agent" that runs on each node. It's responsible for managing pods and their containers.
+
+```bash
+sudo journalctl -u kubelet -n 100 --no-pager
+```
+
+Look for messages related to the pod in question, especially any "Out of Memory" (OOM) messages.
+
+#### Inspecting containers with crictl
+
+`crictl` is a command-line interface for CRI-compatible container runtimes. It's a more direct way to inspect containers on a Kubernetes node than using `docker` or `ctr`.
+
+First, list all pods to find the ID of the pod you're interested in:
+
+```bash
+sudo crictl pods
+```
+
+Then, inspect the pod to get more details, including the state of its containers:
+
+```bash
+sudo crictl inspectp <POD_ID>
+```
+
+If a container in the pod has been killed, you can look at its logs:
+
+```bash
+sudo crictl logs <CONTAINER_ID>
+```
+
+You can also inspect the container itself to see details about its state, including the reason it was terminated:
+
+```bash
+sudo crictl inspect <CONTAINER_ID>
+```
+
+Look for the `reason` field in the output.
