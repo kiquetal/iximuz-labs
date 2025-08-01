@@ -4,6 +4,7 @@ This document details the `iproute2` commands used to create both a simple L2 br
 
 #### Bash functions (Simple L2 Bridge)
 
+```bash
 create_bridge_simple() {
 
   local nsname="$1"
@@ -43,6 +44,7 @@ create_end_host_simple() {
   # Attach peer2 interface to the bridge.
   ip netns exec ${bridge_nsname} ip link set ${peer2_ifname} master ${bridge_ifname}
 }
+```
 
 
 ---
@@ -78,6 +80,7 @@ Here are the specific functions used to create a VLAN-aware bridge and connect h
 
 #### Bash functions (VLAN-Aware L2 Bridge)
 
+```bash
 create_bridge_vlan() {
   local nsname="$1"
   local ifname="$2"
@@ -120,6 +123,7 @@ create_end_host_vlan() {
   ip netns exec ${bridge_nsname} bridge vlan del dev ${peer2_ifname} vid 1
   ip netns exec ${bridge_nsname} bridge vlan add dev ${peer2_ifname} vid ${vlan_vid} pvid ${vlan_vid}
 }
+```
 
 This setup demonstrates how a single Linux bridge can be used to create multiple isolated Layer 2 networks. The `vlan_filtering 1` command turns the bridge into a VLAN-aware switch. The `create_end_host_vlan` function then assigns each host's connection to a specific VLAN using the `bridge vlan add` command. The `pvid` (Port VLAN ID) setting is key, as it tags all untagged traffic from the host with the correct VLAN ID, allowing the hosts to be unaware of the VLAN configuration.
 
