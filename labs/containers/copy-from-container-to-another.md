@@ -1,4 +1,3 @@
-
 # How to Manually Download a Container Image Manifest using cURL
 
 This guide demonstrates how to use `curl` to manually interact with a container registry's API, following the OCI Distribution Specification. This process is useful for debugging or understanding the low-level mechanics of how container images are stored and retrieved.
@@ -96,5 +95,42 @@ jq . "${FINAL_MANIFEST_FILE}"
 echo "----------------------------"
 echo
 echo "Next step: Use the digests in '${FINAL_MANIFEST_FILE}' to download the config and layer blobs."
+
+```
+
+```
+
+--- 
+
+## How to Copy an Image Between Registries using `crane`
+
+`crane` provides a simple and efficient way to copy images directly between container registries. The `crane copy` command streams the image from the source to the destination without needing to store it on your local disk, which saves time and space.
+
+This is the recommended approach for moving images between registries, especially when dealing with different tags or private repositories.
+
+### Usage
+
+The command follows this format:
+`crane copy <source_image> <destination_image>`
+
+Before you begin, if your destination registry is private, you must first log in:
+`crane auth login <your-private-registry.com> -u <your-username>`
+
+### Example: Copying from `ghcr.io` to a Private Registry
+
+Here is how to copy the `ghcr.io/iximiuz/labs/nginx:latest` image to `registry.iximiuz.com/third-party/nginx` and retag it as `alpine` in a single step.
+
+1.  **Log in to the private registry:**
+    ```bash
+    crane auth login registry.iximiuz.com -u YOUR_USERNAME
+    ```
+
+2.  **Copy the image:**
+    This command pulls the `:latest` tag from the source and pushes it to the destination with the `:alpine` tag.
+    ```bash
+    crane copy ghcr.io/iximiuz/labs/nginx:latest registry.iximiuz.com/third-party/nginx:alpine
+    ```
+
+This single command handles the entire process, including authentication with the destination registry (using the credentials you provided in the login step).
 
 ```
