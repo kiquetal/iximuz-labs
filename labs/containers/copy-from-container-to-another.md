@@ -98,7 +98,7 @@ echo "Next step: Use the digests in '${FINAL_MANIFEST_FILE}' to download the con
 
 ```
 
-```
+
 
 --- 
 
@@ -111,10 +111,16 @@ This is the recommended approach for moving images between registries, especiall
 ### Usage
 
 The command follows this format:
-`crane copy <source_image> <destination_image>`
+
+```bash
+crane copy <source_image> <destination_image>
+```
 
 Before you begin, if your destination registry is private, you must first log in:
-`crane auth login <your-private-registry.com> -u <your-username>`
+
+```bash
+crane auth login <your-private-registry.com> -u <your-username>
+```
 
 ### Example: Copying from `ghcr.io` to a Private Registry
 
