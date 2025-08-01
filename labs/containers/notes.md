@@ -1,40 +1,52 @@
-#### How to work with container images using ctr
+# Notes on Container Management
 
-#### List images
+A collection of notes and commands for working with containers, focusing on `ctr`, `crictl`, and troubleshooting in a Kubernetes environment.
 
-```
+## Table of Contents
+
+- [How to work with container images using ctr](#how-to-work-with-container-images-using-ctr)
+  - [List images](#list-images)
+  - [Build images](#build-images)
+  - [Mount images](#mount-images)
+  - [Tag images](#tag-images)
+  - [Where are image labels stored?](#where-are-image-labels-stored)
+- [Troubleshooting Killed Pods](#troubleshooting-killed-pods)
+  - [Check kubelet logs](#check-kubelet-logs)
+  - [Inspecting containers with crictl](#inspecting-containers-with-crictl)
+- [Challenges](#challenges)
+
+## How to work with container images using ctr
+
+### List images
+
+```bash
 sudo ctr images ls
-
 ```
 
-#### Build images
+### Build images
 
-It does not provide a out-of-the-box image building functionality
+`ctr` does not provide out-of-the-box image building functionality. You can use `docker` to build and then import the image.
 
-```
-
+```bash
+# Build the image with Docker
 docker build -t example.com/iximiuz/test:latest - <<EOF
 FROM busybox:latest
 CMD ["echo", "just a test"]
 EOF
 
+# Save the image to a tarball
 docker save -o iximiuz-test.tar example.com/iximiuz/test:latest
 
+# Import the image with ctr
 sudo ctr image import iximiuz-test.tar
-
 ```
 
 ### Mount images to see the content as one os file
 
-```
-
+```bash
 mkdir /tmp/nginx_rootfs
 sudo ctr image mount docker.io/library/nginx:latest /tmp/nginx_rootfs
-
-
-
 ```
-
 
 ### Tag images
 
@@ -79,11 +91,11 @@ ctr image inspect <image_name> | jq '.Spec.Config.Labels'
 ```
 This is more direct than exporting and searching through the tar file.
 
-### Troubleshooting Killed Pods
+## Troubleshooting Killed Pods
 
 When a pod is killed, it's often due to resource constraints or errors. Here are some commands to help you investigate.
 
-#### Check kubelet logs
+### Check kubelet logs
 
 The `kubelet` is the primary "node agent" that runs on each node. It's responsible for managing pods and their containers.
 
@@ -93,7 +105,7 @@ sudo journalctl -u kubelet -n 100 --no-pager
 
 Look for messages related to the pod in question, especially any "Out of Memory" (OOM) messages.
 
-#### Inspecting containers with crictl
+### Inspecting containers with crictl
 
 `crictl` is a command-line interface for CRI-compatible container runtimes. It's a more direct way to inspect containers on a Kubernetes node than using `docker` or `ctr`.
 
@@ -123,7 +135,6 @@ sudo crictl inspect <CONTAINER_ID>
 
 Look for the `reason` field in the output.
 
+## Challenges
 
-### Challenges
-
-- [How to manually download a container image manifest using cURL and how to copy an image between registries using `crane`](./challenge-copy-from-one-registry-to-another.md) 
+- [How to manually download a container image manifest using cURL and how to copy an image between registries using `crane`](./challenge-copy-from-one-registry-to-another.md)
