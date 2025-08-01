@@ -126,4 +126,4 @@ Look for the `reason` field in the output.
 
 ### Challenges
 
-- [How to manually download a container image manifest using cURL and how to copy an image between registries using `crane`](./copy-from-container-to-another.md) 
+- [How to manually download a container image manifest using cURL and how to copy an image between registries using `crane`](./challenge-copy-from-one-registry-to-another.md) 
