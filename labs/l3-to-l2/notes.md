@@ -168,3 +168,31 @@ create_end_host() {
 #    |   | +-------------+  |                    |     |                                                      |
 #    |   +------------------+                    |     |                                                      |
 #    +-------------------------------------------+     +------------------------------------------------------+
+
+---
+
+### L2 Network Diagram
+
+This diagram illustrates the creation of a simple Layer 2 network. A single bridge, `br`, is created within its own namespace, `br2`. Three hosts (`host10`, `host11`, `host12`), each in their own namespace, are then connected to this bridge.
+
+Because all hosts are connected to the same bridge and assigned IP addresses in the same subnet (`192.168.0.0/24`), they can all communicate directly with each other. This setup is a foundational example of a flat Layer 2 network topology.
+
+```ascii
+                    +---------------------------------+
+                    |      Bridge Namespace (br2)     |
+                    |                                 |
+                    | +--------------+  +----------+  |
+                    | |  Bridge: br  |  |  lo (UP) |  |
+                    | +--------------+  +----------+  |
+                    +---------------------------------+
+                               |      |      |
+                 +-------------+      |      +-------------+
+                 | (veth)             | (veth)             | (veth)
+  +--------------+------------+  +--------------+------------+  +--------------+------------+
+  |      Host (host10)      |  |      Host (host11)      |  |      Host (host12)      |
+  |                         |  |                         |  |                         |
+  | eth10: 192.168.0.10/24  |  | eth11: 192.168.0.11/24  |  | eth12: 192.168.0.12/24  |
+  | lo (UP)                 |  | lo (UP)                 |  | lo (UP)                 |
+  +-------------------------+  +-------------------------+  +-------------------------+
+```
+
