@@ -24,6 +24,18 @@ sudo ctr image import iximiuz-test.tar
 
 ```
 
+### Mount images to see the content as one os file
+
+```
+
+mkdir /tmp/nginx_rootfs
+sudo ctr image mount docker.io/library/nginx:latest /tmp/nginx_rootfs
+
+
+
+```
+
+
 ### Tag images
 
 The command to tag an image is:
