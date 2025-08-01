@@ -9,3 +9,5 @@ This repository contains a collection of labs and experiments.
     *   **VLAN-Aware Bridge:** Shows how to implement network segmentation using a single bridge and VLANs, effectively creating multiple isolated L2 networks.
 
     **Pain Points:** The lab highlights the complexity and manual effort required to configure these networks using `iproute2` commands. Managing namespaces, veth pairs, bridge settings, and VLAN configurations can be error-prone and difficult to scale without significant automation.
+
+*   **Working with Containers:** This lab provides practical notes on managing container images using `ctr`. It covers essential commands for listing, importing, mounting, and tagging images. Additionally, it delves into troubleshooting common Kubernetes issues, such as investigating killed pods by inspecting `kubelet` logs and using `crictl` to examine container states.
