@@ -128,3 +128,28 @@ The result is a new shell process that is running on the host, but looking throu
 ```
 
 So, even though this new shell is technically a process on your host, `nsenter` has placed it *inside* the container's network namespace. When you run `ip a` in that shell, it reports the network devices and IPs that the container sees, not what the host sees.
+
+### How to obtain the Task ID of a Docker Container
+
+When you run a container with Docker, it uses containerd under the hood. Docker manages its containers within a specific containerd namespace called `moby`.
+
+Therefore, to find the containerd task ID for a running Docker container, you need to list the tasks within the `moby` namespace.
+
+You can do this with the following command:
+
+```bash
+sudo ctr -n moby task ls
+```
+
+This command will output a list of all running tasks that Docker has started. You can then find your container in the list by its container ID or image name to get the corresponding `PID` (which is the task ID in this context).
+
+**Example Output:**
+
+```
+TASK        PID      STATUS
+nginx-web   15432    RUNNING
+redis-db    15678    RUNNING
+```
+
+In this example, `15432` and `15678` are the PIDs you could use with commands like `nsenter`.
+
