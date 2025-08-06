@@ -142,3 +142,4 @@ Look for the `reason` field in the output.
 - [How to extract files from a container image using ctr](./challenge-extract-files-from-container-image-using-ctr.md)
 - [How to add a label to a container image using ctr](./challenge-add-label-using-ctr.md)
 - [How to tag and push a container image using ctr](./challenge-tag-push-container-image-using-ctr.md)
+- [How to start and inspect a container with containerd CLI](./challenge-start-and-inspect-container-with-containerd-cli.md)
