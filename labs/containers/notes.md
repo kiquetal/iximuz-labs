@@ -144,3 +144,4 @@ Look for the `reason` field in the output.
 - [How to tag and push a container image using ctr](./challenge-tag-push-container-image-using-ctr.md)
 - [How to start and inspect a container with containerd CLI](./challenge-start-and-inspect-container-with-containerd-cli.md)
 - [How to extract an entire filesystem from a Docker image](./challenge-extract-entire-filesystem-from-docker-container.md)
+- [How to execute a command in a docker container using ctr](./challenge-execute-a-command-in-a-docker-container-using-ctr.md)
