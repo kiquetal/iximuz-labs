@@ -75,3 +75,54 @@ To register and use a systemd unit file for containerd, follow these steps:
     ```bash
     sudo systemctl status containerd
     ```
+
+### Running a container with CNI
+
+Once CNI is installed and configured on the host, you can run containers with network connectivity. Here's how to run an nginx container using `ctr` and attach it to the CNI network.
+
+1.  **Pull the nginx image:**
+    ```bash
+    sudo ctr image pull docker.io/library/nginx:latest
+    ```
+
+2.  **Run the nginx container with CNI:**
+    ```bash
+    sudo ctr run --cni -d docker.io/library/nginx:latest nginx
+    ```
+    - `--cni`: Enables CNI networking for the container.
+    - `-d`: Runs the container in detached mode.
+    - `docker.io/library/nginx:latest`: The image to use.
+    - `nginx`: The name of the container.
+
+3.  **Verify the container is running and has an IP address:**
+    You can inspect the container to get its IP address.
+    ```bash
+    sudo ctr container info nginx
+    ```
+    Look for the IP address in the container's network information.
+
+### You need to sure to add the following installation for the cni
+
+```bash
+
+{
+  "type": "bridge",
+  "bridge": "bridge0",
+  "name": "bridge",
+  "isGateway": true,
+  "ipMasq": true,
+  "ipam": {
+    "type": "host-local",
+    "ranges": [
+      [{"subnet": "172.18.0.0/24"}]
+    ],
+    "routes": [{"dst": "0.0.0.0/0"}]
+  },
+  "cniVersion": "1.0.0"
+}
+```
+
+
+
+
+ sudo mv /etc/cni/net.d/bridge.cnf /etc/cni/net.d/10-bridge.conf 
