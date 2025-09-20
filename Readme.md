@@ -11,3 +11,12 @@ This repository contains a collection of labs and experiments.
     **Pain Points:** The lab highlights the complexity and manual effort required to configure these networks using `iproute2` commands. Managing namespaces, veth pairs, bridge settings, and VLAN configurations can be error-prone and difficult to scale without significant automation.
 
 *   **[Working with Containers](./labs/containers/notes.md):** This lab provides practical notes on managing container images using `ctr`. It covers essential commands for listing, importing, mounting, and tagging images. Additionally, it delves into troubleshooting common Kubernetes issues, such as investigating killed pods by inspecting `kubelet` logs and using `crictl` to examine container states.
+
+
+
+### Courses: How to install and Configure containerd on a linux Server
+
+- The containerd release archive includes only the essentials components:
+- ctr the command-line client
+- containerd the daemon itself
+- containerd-shim-runc-v2 an OCI container
