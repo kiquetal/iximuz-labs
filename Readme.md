@@ -22,3 +22,9 @@ This repository contains a collection of labs and experiments.
 - containerd-shim-runc-v2 an OCI container
 
 ![./images/containerd-components.png](./images/containerd-components.png)
+
+To be able to run containers you need the following:
+- A container runtime
+- A set of CNI plugins (bridge, host-local, loopback)
+
+
