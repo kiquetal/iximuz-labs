@@ -135,6 +135,14 @@ sudo crictl inspect <CONTAINER_ID>
 
 Look for the `reason` field in the output.
 
+#### Test container networking
+
+To inspect the network configuration of a running container, you can execute a command inside it. The following command runs `ip addr show` inside the container named `nginx2` to display its network interfaces and IP addresses.
+
+sudo ctr t exec --exec-id ip nginx2 \
+ip add show
+
+
 ## Challenges
 
 
