@@ -154,3 +154,4 @@ ip add show
 - [How to extract an entire filesystem from a Docker image](./challenge-extract-entire-filesystem-from-docker-container.md)
 - [How to execute a command in a docker container using ctr](./challenge-execute-a-command-in-a-docker-container-using-ctr.md)
 - [How to execute http request in a container without exposed ports](./challenge-execute-http-request-in-a-container-without-exposed-ports.md)
+- [How to install and configure containerd on a linux host](./challenge-install-configure-containerd-on-a-linux-host.md)
