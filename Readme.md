@@ -27,4 +27,22 @@ To be able to run containers you need the following:
 - A container runtime
 - A set of CNI plugins (bridge, host-local, loopback)
 
+### How to install runc
 
+If you choose to install runc, it should be as simple as downloading a statically linked binary from the [GitHub Releases page](https://github.com/opencontainers/runc/releases), placing it in one of the directories in your `$PATH`, and making it executable.
+
+For example, to install runc v1.1.12, you can use the following commands:
+
+```bash
+wget https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64
+
+sudo install -m 755 runc.amd64 /usr/local/sbin/runc
+```
+
+#### Verification
+
+After installation, you can verify that `runc` is installed and accessible by checking its version:
+
+```bash
+runc --version
+```
