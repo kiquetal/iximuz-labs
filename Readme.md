@@ -46,3 +46,43 @@ After installation, you can verify that `runc` is installed and accessible by ch
 ```bash
 runc --version
 ```
+
+### How to install CNI plugins
+
+To install the CNI plugins, you can download the release binaries from the GitHub Releases page and extract them to /opt/cni/bin
+
+```bash
+wget https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-amd64-v1.5.1.tgz
+sudo mkdir -p /opt/cni/bin
+sudo tar -C /opt/cni/bin -xzf cni-plugins-linux-amd64-v1.5.1.tgz
+```
+
+### CNI Configuration
+
+Once the CNI plugins are installed, you need to provide a network configuration file. This file should be placed in `/etc/cni/net.d/`. For example, you can create a file named `10-bridge.conf` with the following content:
+
+```json
+{
+  "cniVersion": "1.0.0",
+  "name": "bridge",
+  "type": "bridge",
+  "bridge": "bridge0",
+  "isGateway": true,
+  "ipMasq": true,
+  "ipam": {
+    "type": "host-local",
+    "ranges": [
+      [{"subnet": "172.18.0.0/24"}]
+    ],
+    "routes": [{"dst": "0.0.0.0/0"}]
+  }
+}
+```
+
+This configuration does the following:
+*   **`"type": "bridge"`**: Uses the `bridge` CNI plugin to create a Linux bridge.
+*   **`"bridge": "bridge0"`**: Names the bridge `bridge0`.
+*   **`"isGateway": true`**: Sets the bridge as a gateway for the containers.
+*   **`"ipMasq": true`**: Enables IP masquerading, which allows containers to access the internet.
+*   **`"ipam": { "type": "host-local" }`**: Uses the `host-local` IPAM plugin to manage IP address allocation for containers.
+*   **`"ranges": [[{"subnet": "172.18.0.0/24"}]]`**: Allocates IPs from the `172.18.0.0/24` subnet.
