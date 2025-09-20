@@ -20,3 +20,5 @@ This repository contains a collection of labs and experiments.
 - ctr the command-line client
 - containerd the daemon itself
 - containerd-shim-runc-v2 an OCI container
+
+![./images/containerd-components.png](./images/containerd-components.png)
