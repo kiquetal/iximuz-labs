@@ -33,8 +33,8 @@ This timeline provides approximately 3-4 months of focused preparation.
 **Goal:** Solidify Linux/container concepts and build command-line speed.
 
 *   **Weeks 1-2:**
-    *   Review key concepts from "How Linux Works".
-    *   Read "Docker Deep Dive" to understand storage drivers, container networking, and the runtime.
+    *   Review key concepts from "How Linux Works," focusing on filesystems, processes, and networking to solidify your understanding of the underlying operating system.
+    *   Read "Docker Deep Dive" to understand the container runtime, especially storage drivers and container networking, which are crucial for troubleshooting node-level issues.
 *   **Weeks 3-4:**
     *   Begin your chosen CKA course (e.g., KodeKloud), focusing on the introductory sections.
     *   **Daily Practice:** Spend 15-20 minutes every day on basic `kubectl` commands. Get comfortable with `kubectl explain` and creating resources imperatively.
