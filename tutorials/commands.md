@@ -134,19 +134,38 @@ mount [-t fstype] [-o options] device dir
 
 **Common `-t` (filesystem type) parameters for containerization:**
 
-*   **`ext4`, `xfs`, etc.:** For mounting regular disk partitions or image files (via loop devices).
-*   **`proc`:** Mounts the `/proc` virtual filesystem, providing process information. Essential for many Linux utilities to function correctly inside a container.
-    ```bash
-    mount -t proc proc /path/to/container/root/proc
-    ```
-*   **`sysfs`:** Mounts the `/sys` virtual filesystem, exposing kernel objects and their attributes.
-    ```bash
-    mount -t sysfs sysfs /path/to/container/root/sys
-    ```
-*   **`tmpfs`:** Mounts a temporary filesystem residing in RAM. Often used for `/tmp` or other transient data within containers.
-    ```bash
-    mount -t tmpfs tmpfs /path/to/container/root/tmp
-    ```
+*   **`ext4`, `xfs`, etc.:** For mounting regular disk partitions or image files (via loop devices). This is typically used for the container's root filesystem.
+
+*   **`proc`:** Mounts the `/proc` virtual filesystem.
+    *   **Why it's used:** The `proc` filesystem provides an interface to kernel data structures. It's where information about processes, system memory, hardware configuration, and more is exposed as a hierarchical file-like structure.
+    *   **When to use it in a container:** You should mount `/proc` in almost every container. Without it, many fundamental Linux commands like `ps`, `top`, `free`, `netstat`, and even `ls` (in some cases) will not work correctly because they rely on `/proc` to gather information about the system and its processes. When combined with a PID namespace, mounting `/proc` ensures that the container only sees its own processes.
+    *   **Example:**
+        ```bash
+        # Mount the proc filesystem in the container's /proc directory
+        mount -t proc proc /path/to/container/root/proc
+        ```
+
+*   **`sysfs`:** Mounts the `/sys` virtual filesystem.
+    *   **Why it's used:** `sysfs` provides information about devices, drivers, and some kernel features.
+    *   **When to use it in a container:** While not as universally critical as `/proc`, `/sys` is often mounted to provide read-only information about the system's hardware. Some applications and monitoring tools might require access to `/sys` to function correctly. For security, it's common practice to mount it as read-only.
+    *   **Example:**
+        ```bash
+        # Mount the sysfs filesystem read-only
+        mount -t sysfs sysfs /path/to/container/root/sys -o ro
+        ```
+
+*   **`tmpfs`:** Mounts a temporary filesystem that resides entirely in RAM.
+    *   **Why it's used:** `tmpfs` is extremely fast because it avoids disk I/O. Data stored in a `tmpfs` mount is volatile and will be lost when the container stops or the filesystem is unmounted. This is useful for security and performance.
+    *   **When to use it in a container:**
+        *   For directories like `/tmp` and `/var/run` where applications store temporary files, sockets, or PID files that should not persist.
+        *   For sharing secrets or sensitive data with a container. You can mount a `tmpfs` volume and write the secret to it, ensuring it never touches a physical disk and is automatically cleaned up.
+        *   For performance-sensitive applications that need a high-speed scratch space for transient data.
+    *   **Example:**
+        ```bash
+        # Mount a tmpfs for the /tmp directory with a size limit of 64MB
+        mount -t tmpfs -o size=64m tmpfs /path/to/container/root/tmp
+        ```
+
 *   **`devtmpfs` or `devfs`:** Mounts a filesystem containing device files (e.g., `/dev/null`, `/dev/random`). Often combined with `mknod` to create specific devices.
     ```bash
     mount -t devtmpfs devtmpfs /path/to/container/root/dev
