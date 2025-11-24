@@ -89,6 +89,24 @@ The `unshare` command is a crucial tool for understanding and building container
 
 The `nsenter` command allows you to "enter" the namespaces of another running process. This is incredibly useful for debugging and inspection. Instead of creating a new, empty namespace with `unshare`, you can join an existing one to see what's happening inside it.
 
+```ascii
+       +-------------------+       +-------------------+
+       |     Process A     |       |     Process B     |
+       |  (e.g., Container)|       |  (e.g., Host Shell)|
+       | PID: 12345        |       | PID: 67890        |
+       | Mount Namespace X | <-----+ Mount Namespace Y |
+       | PID Namespace A   |       | PID Namespace B   |
+       | UTS Namespace A   |       | UTS Namespace B   |
+       +---------+---------+       +---------+---------+
+                 |                           ^
+                 |                           |
+                 |      nsenter              |
+                 |      --mount              |
+                 |      --pid                |
+                 +---------------------------+
+                 (Enters Process A's Namespaces)
+```
+
 ```bash
 # Enter the mount namespace of process with PID 12345
 sudo nsenter --mount=/proc/12345/ns/mnt
