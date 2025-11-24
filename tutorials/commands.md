@@ -215,38 +215,109 @@ After `mount --bind /app /container_root/mnt/app_data`:
 
 The container now sees the contents of `/host/path` at `/container_root/mnt/app_data`, effectively sharing the application code without copying it.
 
+## `mknod` and `chown` for `/dev` Setup
+
+The `mknod` command is used to create special files like device nodes (also known as device files) in the filesystem. These files provide an interface to hardware devices or pseudo-devices, which are crucial for the basic functionality of a Linux system, including within a container. The `chown` command is then used to set proper ownership for these device files.
+
+**Usage Example for Container `/dev` Directory:**
+
+```bash
+mknod -m 666 "$ROOTFS_DIR/dev/null"    c 1 3
+mknod -m 666 "$ROOTFS_DIR/dev/zero"    c 1 5
+mknod -m 666 "$ROOTFS_DIR/dev/full"    c 1 7
+mknod -m 666 "$ROOTFS_DIR/dev/random"  c 1 8
+mknod -m 666 "$ROOTFS_DIR/dev/urandom" c 1 9
+mknod -m 666 "$ROOTFS_DIR/dev/tty"     c 5 0
+
+chown root:root "$ROOTFS_DIR/dev/"{null,zero,full,random,urandom,tty}
+```
+
+**Explanation:**
+
+*   `mknod`: Creates a device file.
+    *   `-m 666`: Sets the file permissions to `rw-rw-rw-`.
+    *   `"$ROOTFS_DIR/dev/..."`: The path to the device file within the container's root filesystem (represented by `$ROOTFS_DIR`).
+    *   `c`: Specifies a character device file (for sequential I/O). Block devices (for random access I/O) would use `b`.
+    *   `1 3` (and other pairs): These are the **major** and **minor** device numbers.
+        *   **Major Number**: Identifies the device driver. For example, `1` typically corresponds to the `mem` driver (which handles `/dev/null`, `/dev/zero`, etc.), and `5` often corresponds to the `tty` driver.
+        *   **Minor Number**: Identifies a specific device or partition managed by that driver. For `mem` (major 1), minor `3` is `/dev/null`, minor `5` is `/dev/zero`, and so on. For `tty` (major 5), minor `0` is `/dev/tty`.
+
+*   `chown root:root ...`: Changes the owner and group of the created device files to `root:root`, which is the standard ownership for most files in the `/dev` directory.
+    *   `"$ROOTFS_DIR/dev/"{null,zero,full,random,urandom,tty}`: Uses shell brace expansion to concisely list all the device files that were just created.
+
+**Purpose in Containerization:**
+
+Creating these essential device files within a container's `/dev` directory is critical for its functionality:
+*   `/dev/null`, `/dev/zero`, `/dev/full`: Fundamental pseudo-devices used by many applications for discarding output, providing zero-filled input, or simulating disk full conditions.
+*   `/dev/random`, `/dev/urandom`: Provide sources of randomness, vital for cryptographic operations and secure applications.
+*   `/dev/tty`: Allows processes to interact with their controlling terminal, essential for command-line applications.
+
+Without these, a container would often fail to run basic commands or applications, as they expect these standard interfaces to the kernel's device management to be present.
+
+
+
 
 ## `unshare`
 
-The `unshare` command creates new namespaces for the calling process and then executes a specified program. This is a key command for isolating a process from the main system.
+The `unshare` command creates new namespaces for a calling process and then executes a specified program within them. It is a high-level utility that provides a convenient wrapper around the `unshare()` and `clone()` system calls, making it a key tool for creating and experimenting with isolated environments from the command line.
+
+### Comprehensive Example
+
+The following command creates a new, highly isolated `bash` shell that resembles a basic container environment.
+
+**Usage:**
+```bash
+sudo unshare --mount --pid --fork --cgroup --uts --net bash
+```
+
+*   `sudo`: Required for creating namespaces that demand elevated privileges (like the network and mount namespaces) and configuring them.
+*   `--mount`: Creates a **new Mount namespace**. The shell gets an isolated view of the filesystem. Mounts and unmounts performed inside this shell will not affect the host's mount table.
+*   `--pid`: Creates a **new PID namespace**. The new `bash` process will be PID 1 inside this namespace, unable to see or signal processes on the host.
+*   `--fork`: Used with `--pid`, this forks a new child process to become PID 1 in the new PID namespace.
+*   `--cgroup`: Creates a **new Cgroup namespace**. This isolates the shell's view of its own control groups, preventing it from seeing the host's full cgroup hierarchy.
+*   `--uts`: Creates a **new UTS namespace**, giving the shell its own isolated hostname and domain name.
+*   `--net`: Creates a **new Network namespace**. The shell gets its own private network stack, including network interfaces (initially just a down `lo` loopback), routing tables, and firewall rules, completely disconnecting it from the host's network.
+*   `bash`: The program to run inside the newly created set of namespaces.
+
+### `unshare` Command vs. Programmatic Creation
+
+There are two primary ways to create namespaces: using the high-level `unshare` command or by making direct system calls (`clone`, `unshare`) in a low-level language like C or Go.
+
+*   **`unshare` Command (High-Level):**
+    *   **Pros:** Simple, concise, and ideal for shell scripting, system administration tasks, and experimentation. It allows you to create a complex, multi-namespace environment in a single, readable line.
+    *   **Cons:** Less flexible. It is designed to run a command within new namespaces, but it doesn't offer fine-grained control over the setup process *before* the target program starts.
+
+*   **Programmatic Syscalls (Low-Level, e.g., in C/Go):**
+    *   **Pros:** Offers maximum power and flexibility. When building a container runtime, you need to perform many setup steps after creating namespaces but *before* executing the final user process. This includes setting up virtual network devices, mounting the root filesystem, changing the root with `pivot_root`, setting resource limits (cgroups), and dropping privileges. This can only be done programmatically.
+    *   **Cons:** Far more complex and verbose. Requires writing and compiling a dedicated program. This is the approach taken by container runtimes like Docker/containerd and by the example code in `codes/how-container-works/main.go`.
+
+In essence, the `unshare` command is a fantastic tool for learning and for simple isolation tasks, while the programmatic approach is essential for building robust, full-featured containerization software.
+
+
+## `strace`
+
+`strace` is a powerful diagnostic and debugging tool that intercepts and logs system calls made by a process and the signals it receives. It provides a low-level view of how a program interacts with the Linux kernel, making it invaluable for understanding container runtimes like `containerd`.
 
 **Usage:**
 
 ```bash
-unshare [options] [program [arguments]]
+# Terminal 1
+sudo strace -f -qqq -e \
+    trace=/clone,/execve,/unshare,/mount,/mknod,/mkdir,/link,/chdir,/chroot \
+    -p $(pgrep containerd)
 ```
 
-*   `[options]`: These flags determine which namespaces to unshare (create).
-    *   `--fork`: Create a new process and unshare namespaces for it.
-    *   `--pid`: Unshare the PID namespace.
-    *   `--mount-proc`: Mount the `/proc` filesystem, which is necessary when creating a new PID namespace.
-    *   `--uts`: Unshare the UTS namespace (hostname).
-    *   `--ipc`: Unshare the IPC namespace.
-    *   `--net`: Unshare the network namespace.
-    *   `--user`: Unshare the user namespace.
-    *   `--map-root-user`: Map the current user to the root user in the new user namespace.
-*   `[program [arguments]]`: The program to run in the new namespaces.
+*   `sudo strace`: Run `strace` with root privileges, which are necessary to inspect other processes like `containerd`.
+*   `-f`: Follows all child processes created by the traced process. This is crucial because container runtimes launch containers as new child processes.
+*   `-qqq`: A "super quiet" mode that suppresses `strace`'s own attachment and detachment messages, resulting in cleaner output focused only on the traced calls.
+*   `-p $(pgrep containerd)`: Attaches `strace` to an existing process. The `pgrep containerd` command finds the Process ID (PID) of the running `containerd` daemon.
+*   `-e trace=...`: Specifies which system calls to trace. This example uses a custom set of calls that are fundamental to container creation:
+    *   `clone`, `execve`: For creating new processes and executing programs within them. The `clone` syscall is the basis for creating new namespaces.
+    *   `unshare`: For explicitly creating new namespaces for a process without creating a new process.
+    *   `mount`: For setting up the container's filesystem, including the rootfs and virtual filesystems like `/proc`.
+    *   `mknod`, `mkdir`, `link`: For creating filesystem structures like device nodes, directories, and hard links.
+    *   `chdir`, `chroot`: For changing the working directory and, most importantly, changing the process's root directory to isolate its filesystem view.
 
-**Example:**
+**Why it's used:**
 
-To create a new process with its own PID and UTS namespaces, and run a shell inside it:
-
-```bash
-unshare --fork --pid --mount-proc --uts /bin/bash
-```
-
-Inside this new shell:
-*   The process ID will be 1.
-*   You can set a new hostname that will only be visible within this shell.
-
-This command is fundamental for creating isolated environments that form the basis of containers.
+This command allows you to observe the precise, low-level sequence of kernel interactions that a container runtime like `containerd` performs to start a container. By watching these specific syscalls, you can see exactly how namespaces are created, how the container's root filesystem is constructed and isolated, and which binaries are executed. It is an essential tool for deep-diving into how containers actually work under the hood.
