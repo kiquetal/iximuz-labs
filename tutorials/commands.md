@@ -118,6 +118,85 @@ And you run `chroot /home/user/jail /bin/bash`, the new process will see `/home/
 - `pivot_root` is more powerful and provides better isolation because it moves the old root away, making it possible to unmount it. With `chroot`, the original root remains a part of the process's filesystem, which can sometimes be escaped.
 - `pivot_root` is used in modern containerization technologies, while `chroot` is an older and less secure method for filesystem isolation.
 
+## `mount`
+
+The `mount` command attaches a filesystem (from a device, a network share, or a special virtual filesystem) to a specified directory in the filesystem hierarchy, making its contents accessible. It is fundamental for setting up isolated environments in containers by controlling what filesystems are visible and where.
+
+**Usage:**
+```bash
+mount [-t fstype] [-o options] device dir
+```
+
+*   `-t fstype`: Specifies the filesystem type. This is crucial for virtual filesystems used in containerization.
+*   `-o options`: Specifies mount options, such as `ro` (read-only), `rw` (read-write), `bind` (bind mount), `defaults`, `loop`, etc.
+*   `device`: The special file (e.g., `/dev/sdb1`), a directory for bind mounts, or a pseudo-filesystem name (e.g., `proc`).
+*   `dir`: The directory where the filesystem will be mounted.
+
+**Common `-t` (filesystem type) parameters for containerization:**
+
+*   **`ext4`, `xfs`, etc.:** For mounting regular disk partitions or image files (via loop devices).
+*   **`proc`:** Mounts the `/proc` virtual filesystem, providing process information. Essential for many Linux utilities to function correctly inside a container.
+    ```bash
+    mount -t proc proc /path/to/container/root/proc
+    ```
+*   **`sysfs`:** Mounts the `/sys` virtual filesystem, exposing kernel objects and their attributes.
+    ```bash
+    mount -t sysfs sysfs /path/to/container/root/sys
+    ```
+*   **`tmpfs`:** Mounts a temporary filesystem residing in RAM. Often used for `/tmp` or other transient data within containers.
+    ```bash
+    mount -t tmpfs tmpfs /path/to/container/root/tmp
+    ```
+*   **`devtmpfs` or `devfs`:** Mounts a filesystem containing device files (e.g., `/dev/null`, `/dev/random`). Often combined with `mknod` to create specific devices.
+    ```bash
+    mount -t devtmpfs devtmpfs /path/to/container/root/dev
+    ```
+*   **`none` with `bind` option:** Creates a "bind mount," effectively making a directory or file available at another location in the filesystem hierarchy. This is extensively used in containers to share specific host directories or files without granting full access to the host's filesystem.
+    ```bash
+    mount --bind /host/path /path/to/container/root/guest/path
+    # or using -o bind
+    mount -o bind /host/path /path/to/container/root/guest/path
+    ```
+
+**Visual Explanation of a Bind Mount:**
+
+Initial state:
+
+```
+      / (Host Root)
+      |
+      +-- /app (Host Application Code)
+      |
+      +-- /container_root
+          |
+          +-- /usr
+          +-- /etc
+          +-- /mnt/app_data (empty directory in container)
+```
+
+After `mount --bind /app /container_root/mnt/app_data`:
+
+```
+      / (Host Root)
+      |
+      +-- /app (Host Application Code)
+      |   |
+      |   +-- app.py
+      |   +-- lib/
+      |
+      +-- /container_root
+          |
+          +-- /usr
+          +-- /etc
+          +-- /mnt/app_data <--- Now points to /app
+              |
+              +-- app.py
+              +-- lib/
+```
+
+The container now sees the contents of `/host/path` at `/container_root/mnt/app_data`, effectively sharing the application code without copying it.
+
+
 ## `unshare`
 
 The `unshare` command creates new namespaces for the calling process and then executes a specified program. This is a key command for isolating a process from the main system.
