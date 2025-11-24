@@ -6,10 +6,6 @@
 - mount 
 - pivot_root
 
-
-
-![container-image.png](./images/container-image.png)
-
 #### Command to mount a filesystem
 
 ```bash
@@ -18,16 +14,13 @@ mount --bind /tmp /mnt
 
 This command uses `mount --bind` to create a bind mount. A bind mount makes a file or directory accessible at an alternative location in the filesystem. In this case, the content of `/tmp` is mirrored to `/mnt`.
 
-
-
-
-
 #### Command to check mount points
 
 ```bash
-
 cat /proc/self/mountinfo
 ```
+
+This file provides detailed information about mount points in the process's mount namespace. It's more detailed than `/etc/mtab` and shows specifics like the mount ID, parent ID, propagation status (e.g., `shared`, `slave`), and other kernel-specific mount options. It's invaluable for debugging namespace issues.
 
 #### Command to inspect a process's mount namespace
 
@@ -92,29 +85,26 @@ sudo unshare --mount --pid --uts --fork bash
 
 The `unshare` command is a crucial tool for understanding and building container technologies, as it directly manipulates the namespaces that provide isolation.
 
+#### Explaining the `nsenter` command
 
+The `nsenter` command allows you to "enter" the namespaces of another running process. This is incredibly useful for debugging and inspection. Instead of creating a new, empty namespace with `unshare`, you can join an existing one to see what's happening inside it.
+
+```bash
+# Enter the mount namespace of process with PID 12345
+sudo nsenter --mount=/proc/12345/ns/mnt
+
+# Enter both the mount and PID namespaces of a process
+sudo nsenter --mount=/proc/12345/ns/mnt --pid=/proc/12345/ns/pid
+```
+
+In this tutorial's example, `nsenter --mount=/proc/12345/ns/mnt` is used in Terminal 2 to make its shell run inside the exact same mount namespace as the shell in Terminal 1. This is key to setting up the master-slave relationship.
+
+
+![container-image.png](./images/container-image.png)
 
 #### Different types of propagation
 
-- Private: Changes do not propagate in either direction.
-
-```
-      Namespace A                Namespace B
-+---------------------+     +---------------------+
-|   Mounts            |     |   Mounts            |
-|   (e.g., mount /X)  |     |   (e.g., mount /Y)  |
-+---------------------+     +---------------------+
-        ^                           ^
-        |                           |
-        +-----(No Propagation)------+
-```
-
-```bash
-sudo unshare --mount --propagation private bash
-findmnt -o TARGET,SOURCE,FSTYPE,PROPAGATION
-```
-
-- Shared: Changes propagate in both directions.
+- Shared: Changes propagate in both directions (master-to-slave and slave-to-master). This is useful for sharing mount points between containers or between the host and a container.
 
 ```
       Namespace A                Namespace B
@@ -133,6 +123,46 @@ sudo unshare --mount --propagation shared bash
 findmnt -o TARGET,SOURCE,FSTYPE,PROPAGATION
 ```
 
+- Private: Changes do not propagate in either direction. This is the default and provides the strongest isolation.
+
+```
+      Namespace A                Namespace B
++---------------------+     +---------------------+
+|   Mounts            |     |   Mounts            |
+|   (e.g., mount /X)  |     |   (e.g., mount /Y)  |
++---------------------+     +---------------------+
+        ^                           ^
+        |                           |
+        +-----(No Propagation)------+
+```
+
+```bash
+sudo unshare --mount --propagation private bash
+findmnt -o TARGET,SOURCE,FSTYPE,PROPAGATION
+```
+
+- Slave: Changes propagate one-way, from the master to the slave. Events in the slave namespace do not propagate back to the master.
+
+```
+      Master Namespace           Slave Namespace
++---------------------+     +---------------------+
+|   Mounts            |     |   Mounts            |
+|  (e.g., mount /X)   |     |  (e.g., mount /Y)   |
++---------------------+     +---------------------+
+              |                           ^
+              |                           |
+              +-----(Propagation)--------->
+```
+
+```bash
+sudo unshare --mount --propagation slave bash
+findmnt -o TARGET,SOURCE,FSTYPE,PROPAGATION
+```
+
+#### Explaining `findmnt`
+
+The `findmnt` command is a utility to find a filesystem. It can search for filesystems in `/etc/fstab`, `/etc/mtab`, or `/proc/self/mountinfo`. In this tutorial, we use `findmnt -o TARGET,SOURCE,FSTYPE,PROPAGATION` to list the `TARGET` (mount point), `SOURCE` (device), `FSTYPE` (filesystem type), and `PROPAGATION` status of all mounts, which is perfect for observing the effects of our namespace and propagation changes.
+
 #### Real OS Example of Mount Propagation
 
 Here is a practical, step-by-step example you can run on a Linux machine to see the difference between propagation types. This example requires two separate terminal windows.
@@ -144,20 +174,24 @@ First, let's create a directory and a temporary filesystem (`tmpfs`) to work wit
 In **Terminal 1**, run the following:
 
 ```bash
-# Become root
+# Become root to have permissions for mounting and namespaces.
 sudo su
 
-# Create a new mount namespace and make all mounts private initially
+# Create a new mount namespace and make all mounts private initially.
 unshare --mount --propagation private bash
 
-# Create directories to work with
+# Create directories to work with. The -p flag creates parent directories if they don't exist.
 mkdir -p /tmp/demo/master /tmp/demo/slave
 
-# Create a new tmpfs and mount it on /tmp/demo, making it shared
+# Create a new tmpfs and mount it on /tmp/demo.
+# A tmpfs is a temporary filesystem that resides in RAM, making it very fast.
 mount -t tmpfs -o size=1M tmpfs /tmp/demo
+
+# Change the propagation of the new mount to 'shared'.
+# This means mount events under /tmp/demo will propagate to other namespaces.
 mount --make-shared /tmp/demo
 
-# Get the PID of this shell
+# Get the PID of this shell to use in the next step.
 echo "Terminal 1 PID is $$"
   # Note this PID for the next step. Let's assume it's 12345 for this example.
 ```
@@ -167,19 +201,22 @@ echo "Terminal 1 PID is $$"
 Now, in **Terminal 2**, we will create a new namespace that is a slave to the one in Terminal 1.
 
 ```bash
-# Become root
+# Become root.
 sudo su
 
-# Enter the mount namespace of Terminal 1 (replace 12345 with the actual PID)
+# Enter the mount namespace of Terminal 1 using its PID.
+# From now on, this terminal sees the same filesystem layout as Terminal 1.
 nsenter --mount=/proc/12345/ns/mnt
 
-# Create a new shell with a mount namespace that is a slave to the current one
+# Create a new shell with a mount namespace that is a SLAVE to the current one.
+# This means it will receive mount events from the master, but not send them.
 unshare --mount --propagation slave bash
 
-# Mount our shared tmpfs onto the slave directory
+# Mount our shared tmpfs onto the slave directory.
+# This makes /tmp/demo/slave a mount point so we can inspect its 'slave' property.
 mount /dev/shm /tmp/demo/slave
 
-# Check the mounts. Note the propagation type.
+# Check the mounts. Note the propagation type of 'slave'.
 findmnt -o TARGET,PROPAGATION | grep /tmp/demo
 # Expected output:
 # /tmp/demo        shared
@@ -193,10 +230,10 @@ Now, let's create a new mount point inside the master's shared directory and see
 In **Terminal 1** (the master):
 
 ```bash
-# Mount a new tmpfs inside the shared directory
+# Mount a new tmpfs inside the shared directory.
 mount -t tmpfs -o size=1M tmpfs /tmp/demo/master-test
 
-# Check if it was created
+# Check if it was created.
 ls /tmp/demo/master-test
 # You should see the 'lost+found' directory.
 ```
@@ -206,7 +243,7 @@ Now, check if this new mount propagated to the slave.
 In **Terminal 2** (the slave):
 
 ```bash
-# Check for the new mount inside the slave's view
+# Check for the new mount inside the slave's view.
 ls /tmp/demo/slave/master-test
 # You should see the 'lost+found' directory here too!
 # The mount event propagated from the master to the slave.
@@ -219,10 +256,10 @@ Finally, let's create a new mount in the slave namespace and see if it propagate
 In **Terminal 2** (the slave):
 
 ```bash
-# Mount a new tmpfs inside the slave directory
+# Mount a new tmpfs inside the slave directory.
 mount -t tmpfs -o size=1M tmpfs /tmp/demo/slave/slave-test
 
-# Check if it was created
+# Check if it was created.
 ls /tmp/demo/slave/slave-test
 # You should see 'lost+found'.
 ```
@@ -232,7 +269,7 @@ Now, let's check if this new mount appeared in the master.
 In **Terminal 1** (the master):
 
 ```bash
-# Check for the slave's mount
+# Check for the slave's mount.
 ls /tmp/demo/slave/slave-test
 # ls: cannot access '/tmp/demo/slave/slave-test': No such file or directory
 # The mount event did NOT propagate back from the slave to the master.
